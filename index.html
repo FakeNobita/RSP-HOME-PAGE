@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -60,41 +60,36 @@
             margin-bottom: 30px;
         }
 
-        .week-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
+        .week-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
         }
 
         .week-card {
             background: white;
             border-radius: 12px;
-            padding: 18px 24px;
+            padding: 18px 16px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             border: 1px solid #e5e5e5;
-            cursor: pointer;
-            transition: all 0.2s;
-            outline: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+            opacity: 0;
+            transform: translateY(8px);
+            animation: cardIn 0.35s ease forwards;
+        }
+
+        @keyframes cardIn {
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .week-card:hover {
-            background-color: #f8f8f8;
-        }
-
-        .week-card.selected {
             border-color: #3b82f6;
-            background-color: #ffffff;
-        }
-
-        .week-card:focus-visible {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
-        }
-
-        .week-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 20px;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.15);
+            transform: translateY(-2px);
         }
 
         .week-label {
@@ -103,33 +98,11 @@
             font-size: 16px;
         }
 
-        .week-chevron {
-            color: #3b82f6;
-            font-size: 14px;
-            transition: transform 0.2s;
-        }
-
-        .week-card.selected .week-chevron {
-            transform: rotate(180deg);
-        }
-
-        .action-row {
-            display: none;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e5e5e5;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .action-row.visible {
+        .card-actions {
             display: flex;
-            animation: fadeIn 0.2s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
         }
 
         .action-btn {
@@ -137,12 +110,13 @@
             border-radius: 6px;
             border: none;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             text-decoration: none;
-            display: inline-block;
-            transition: background-color 0.2s;
+            text-align: center;
+            width: 100%;
             font-family: inherit;
+            transition: background-color 0.2s;
         }
 
         .practice-btn {
@@ -163,13 +137,28 @@
             background-color: #d97706;
         }
 
+        .notes-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        #grid-sentinel {
+            height: 1px;
+        }
+
         @media (max-width: 640px) {
             .container {
                 padding: 10px;
             }
 
+            .week-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                gap: 12px;
+            }
+
             .week-card {
-                padding: 16px 18px;
+                padding: 14px 12px;
             }
 
             .brand-header {
@@ -184,16 +173,6 @@
             .brand-logo.aicte {
                 height: 40px;
             }
-
-            .action-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .action-btn {
-                width: 100%;
-                text-align: center;
-            }
         }
     </style>
 </head>
@@ -205,69 +184,72 @@
         </div>
         <h1>Responsible &amp; Safe AI Systems</h1>
         <div class="subtitle">Select a week to begin</div>
-        <div class="week-list" id="week-list"></div>
+        <div class="week-grid" id="week-grid"></div>
+        <div id="grid-sentinel"></div>
     </div>
 
     <script>
         const totalWeeks = 12;
-        const baseUrl = "https://fakenobita.github.io/RSP-WEEK-";
-        const notesPlaceholder = "#";
+        const practiceBaseUrl = "https://fakenobita.github.io/RSP-WEEK-";
 
-        // Fill in real notes links here as they become available.
-        const notesUrls = {
-            1: notesPlaceholder
-        };
+        // Notes are Google Drive folders and don't follow a URL pattern, so they're
+        // listed explicitly here. Index 0 = Week 1, index 1 = Week 2, and so on.
+        // Use null as a placeholder until a week's notes link is ready.
+        const notesLinks = [
+            "https://drive.google.com/drive/folders/1PNsuJd7F7Z54Ig67YxB5Y7KBIRkK-cRX", // Week 1
+            "https://drive.google.com/drive/folders/1DYZfJaOHgbdI8EW9lrylxapbEg32NaHH", // Week 2
+            "https://drive.google.com/drive/folders/1gs00wGFl1d2TclK1DurxV3frEYalhxfI", // Week 3
+            null, // Week 4
+            null, // Week 5
+            null, // Week 6
+            null, // Week 7
+            null, // Week 8
+            null, // Week 9
+            null, // Week 10
+            null, // Week 11
+            null  // Week 12
+        ];
 
-        const weekList = document.getElementById('week-list');
+        const grid = document.getElementById('week-grid');
+        const sentinel = document.getElementById('grid-sentinel');
+        const batchSize = 6;
+        let nextWeek = 1;
 
-        for (let week = 1; week <= totalWeeks; week++) {
+        function createCard(week) {
             const card = document.createElement('div');
             card.className = 'week-card';
-            card.dataset.week = week;
-            card.tabIndex = 0;
-            card.setAttribute('role', 'button');
-            card.setAttribute('aria-expanded', 'false');
-            const notesUrl = notesUrls[week] || notesPlaceholder;
+
+            const notesUrl = notesLinks[week - 1];
+            const notesAttrs = notesUrl
+                ? `href="${notesUrl}" target="_blank" rel="noopener noreferrer"`
+                : `href="#" aria-disabled="true" tabindex="-1"`;
+            const notesClass = notesUrl ? 'action-btn notes-btn' : 'action-btn notes-btn disabled';
+
             card.innerHTML = `
-                <div class="week-header">
-                    <span class="week-label">WEEK-${week}</span>
-                    <span class="week-chevron">&#9662;</span>
-                </div>
-                <div class="action-row">
-                    <a class="action-btn notes-btn" href="${notesUrl}" target="_blank" rel="noopener noreferrer">Notes</a>
-                    <a class="action-btn practice-btn" href="${baseUrl}${week}/" target="_blank" rel="noopener noreferrer">Practice</a>
+                <span class="week-label">WEEK-${week}</span>
+                <div class="card-actions">
+                    <a class="${notesClass}" ${notesAttrs}>Notes</a>
+                    <a class="action-btn practice-btn" href="${practiceBaseUrl}${week}/" target="_blank" rel="noopener noreferrer">Practice</a>
                 </div>
             `;
-            card.addEventListener('click', (event) => {
-                if (event.target.closest('.action-btn')) return;
-                toggleWeek(card);
-            });
-            card.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    toggleWeek(card);
-                }
-            });
-            weekList.appendChild(card);
+            return card;
         }
 
-        function toggleWeek(card) {
-            const wasSelected = card.classList.contains('selected');
-            document.querySelectorAll('.week-card.selected').forEach(deselect);
-            if (!wasSelected) select(card);
+        function loadNextBatch() {
+            const end = Math.min(nextWeek + batchSize - 1, totalWeeks);
+            for (let week = nextWeek; week <= end; week++) {
+                grid.appendChild(createCard(week));
+            }
+            nextWeek = end + 1;
+            if (nextWeek > totalWeeks) observer.disconnect();
         }
 
-        function select(card) {
-            card.classList.add('selected');
-            card.setAttribute('aria-expanded', 'true');
-            card.querySelector('.action-row').classList.add('visible');
-        }
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) loadNextBatch();
+        }, { rootMargin: '200px' });
 
-        function deselect(card) {
-            card.classList.remove('selected');
-            card.setAttribute('aria-expanded', 'false');
-            card.querySelector('.action-row').classList.remove('visible');
-        }
+        loadNextBatch();
+        observer.observe(sentinel);
     </script>
 </body>
 </html>
