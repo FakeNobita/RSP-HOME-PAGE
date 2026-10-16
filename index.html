@@ -182,6 +182,88 @@
             box-shadow: 0 4px 10px rgba(59,130,246,0.15);
             transform: translateY(-2px);
         }
+
+        .archive-title {
+            text-align: center;
+            margin: 40px 0 16px;
+            color: #333;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .archive-title span {
+            color: #666;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        
+        .archive-btn {
+            display: block;
+            padding: 12px 16px;
+            background: white;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 12px;
+            border: 1px solid #e5e5e5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        
+        .archive-btn:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.15);
+            transform: translateY(-2px);
+        }
+
+        .viewer {
+            position: fixed;
+            inset: 0;
+            background: #111;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+        }
+        .viewer.open { display: flex; }
+        
+        .viewer-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #1f1f1f;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .viewer-bar .spacer { flex: 1; }
+        .viewer-bar button,
+        .viewer-bar a {
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .viewer-body {
+            flex: 1;
+            overflow: auto;
+            touch-action: pan-x pan-y pinch-zoom;
+            -webkit-overflow-scrolling: touch;
+        }
+        .viewer-body img {
+            display: block;
+            width: 100%;
+            max-width: none;
+            background: white;
+        }
         
         @media (max-width: 640px) {
             .container {
@@ -225,7 +307,17 @@
         <h2 class="archive-title">Archive <span>(Last Year Assignments)</span></h2>
         <div class="week-grid" id="archive-grid"></div>
     </div>
-
+    <div class="viewer" id="viewer">
+        <div class="viewer-bar">
+            <span id="viewer-title"></span>
+            <span class="spacer"></span>
+            <button id="zoom-out">−</button>
+            <button id="zoom-in">+</button>
+            <a id="viewer-open" target="_blank" rel="noopener noreferrer">Original</a>
+            <button id="viewer-close">✕</button>
+        </div>
+        <div class="viewer-body"><img id="viewer-img" alt="Assignment"></div>
+    </div>
     <script>
         const totalWeeks = 12;
         const practiceBaseUrl = "https://fakenobita.github.io/RSP-WEEK-";
@@ -301,6 +393,42 @@
             link.textContent = `WEEK-${week}`;
             archiveGrid.appendChild(link);
         }
+
+        const viewer = document.getElementById('viewer');
+        const viewerImg = document.getElementById('viewer-img');
+        let zoom = 100;
+        
+        function setZoom(z) {
+            zoom = Math.min(400, Math.max(100, z));
+            viewerImg.style.width = zoom + '%';
+        }
+        
+        function openViewer(url, title) {
+            viewerImg.src = url;
+            document.getElementById('viewer-title').textContent = title;
+            document.getElementById('viewer-open').href = url;
+            setZoom(100);
+            viewer.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeViewer() {
+            viewer.classList.remove('open');
+            viewerImg.src = '';
+            document.body.style.overflow = '';
+        }
+        
+        archiveGrid.addEventListener('click', (e) => {
+            const link = e.target.closest('.archive-btn');
+            if (!link) return;
+            e.preventDefault();
+            openViewer(link.href, link.textContent);
+        });
+        
+        document.getElementById('zoom-in').onclick = () => setZoom(zoom + 50);
+        document.getElementById('zoom-out').onclick = () => setZoom(zoom - 50);
+        document.getElementById('viewer-close').onclick = closeViewer;
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
     </script>
 </body>
 </html>
